@@ -2,238 +2,178 @@
 title: API Reference
 
 language_tabs: # must be one of https://git.io/vQNgJ
-  - shell
-  - ruby
-  - python
+  - json
   - javascript
+  - csharp
 
 toc_footers:
   - <a href='#'>Sign Up for a Developer Key</a>
   - <a href='https://github.com/lord/slate'>Documentation Powered by Slate</a>
 
 includes:
-  - errors
+  # - errors
 
 search: true
 ---
 
-# Introduction
+# Overview
 
-Welcome to the Kittn API! You can use our API to access Kittn API endpoints, which can get information on various cats, kittens, and breeds in our database.
+The IDnow platform can be used to identify persons and electronically sign contracts. The IDnow
+platform supports this functionality with different products:
 
-We have language bindings in Shell, Ruby, Python, and JavaScript! You can view code examples in the dark area to the right, and you can switch the programming language of the examples with the tabs in the top right.
+* IDnow AutoIdent
+* IDnow VideoIdent
+* IDnow eSign
 
-This example API documentation page was created with [Slate](https://github.com/lord/slate). Feel free to edit it and use it as a base for your own API's documentation.
+These products can be used to verify the identity of persons and in the case of IDnow eSign can issue
+electronic signatures.
 
-# Authentication
+The above products all share the same API as described in the following chapters. The API
+documentation doesn’t explicitly refer to products (unless required) but refers to identifications
+irrespectively by which product the identity is verified.
 
-> To authorize, use this code:
+During the technical onboarding process IDnow will enable and configure the respective product(s)
+agreed upon.
 
-```ruby
-require 'kittn'
+IDnow right now offers two different mobile SDKs (one for AutoIdent and one for VideoIdent and eSign)
+which can be used to integrate the IDnow solution into customer specific mobile apps. IDnow also
+offers readily available mobile apps via Google Play and Apple App Store which can be used by users
+to execute the identification process.
 
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-```
+## IDnow AutoIdent
 
-```python
-import kittn
+IDnow AutoIdent offers a fully automated solution to identify a person. The process automatically
 
-api = kittn.authorize('meowmeowmeow')
-```
+* Determines the kind of document used (e.g. passport, ID-card, driver-license)
+* Determines the version of the document (e.g. German passport)
+* Retrieves the data from the document
+* Performs a biometric comparison
+* Executes a liveness detection and
+* Verifies the genuineness of the document used during the process
 
-```shell
-# With shell, you can just pass the correct header with each request
-curl "api_endpoint_here"
-  -H "Authorization: meowmeowmeow"
-```
+Dnow offers mobile Apps for iOS and Android as well as mobile SDKs for integration into customer
+specific apps in order to support the AutoIdent process
 
-```javascript
-const kittn = require('kittn');
+## IDnow VideoIdent
 
-let api = kittn.authorize('meowmeowmeow');
-```
+IDnow VideoIdent allows to verify the identity of a person along with a verification if the document
+used is genuine in a process guided by an IDnow Ident Specialist. The user and IDnow Ident Specialist
+are interacting with each other during this process using a video-chat.
 
-> Make sure to replace `meowmeowmeow` with your API key.
+IDnow offers mobile Apps for iOS and Android for this process. IDnow offers mobile SDKs as well to
+integrate IDnow VideoIdent into customer specific mobile apps. IDnow VideoIdent can also be used
+with a web browser by the user.
 
-Kittn uses API keys to allow access to the API. You can register a new Kittn API key at our [developer portal](http://example.com/developers).
+## IDnow eSign
 
-Kittn expects for the API key to be included in all API requests to the server in a header that looks like the following:
+IDnow eSign issues qualified electronic signatures (QES) on one or more PDF documents. The IDnow
+eSign product relies on the IDnow VideoIdent technology to verify the identity of the person signing
+the PDF documents.
 
-`Authorization: meowmeowmeow`
+As with IDnow VideoIdent, IDnow eSign is available on mobiles and web browsers.
+
+## Lifecycle of Identification
+
+Insert lifecylce graph here.
+
+# Creating Identifications
+
+The REST API lets you pass data about the user to IDnow’s gateway server in order to then start an
+identification process.
+
+The general flow is as follows:
+
+* Your application collects the personal information in the normal checkout process.
+* Your server creates a unique transaction number (here referred to as <transactionnumber>)
+* Your server POSTs the data to IDnow's gateway server
+* Your server redirects the client to IDnow's web server or you start the identification using the
+SDK (iOS / Android).
+* The user is taken to the IDnow System and follows the verification steps.
+
+To create an identification with eSigning, the respective documents need to be uploaded. For details
+on eSigning look up chapter Identifications with eSigning.
 
 <aside class="notice">
-You must replace <code>meowmeowmeow</code> with your personal API key.
+To ensure that all parameters are encrypted, all requeststo the IDnow live server are always performed
+using HTTPS.
 </aside>
 
-# Kittens
+### Transaction Number
 
-## Get All Kittens
+A unique ID generated by your system for each identification with a maximum length of 255 characters.
 
-```ruby
-require 'kittn'
+This number will be provided back to you as your transaction number, so that you can easily make a
+connection between your application and the identification. Please ensure that the transaction
+number is not guessable.
 
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get
-```
+A typical example is a UUID (version 4) as the value.
 
-```python
-import kittn
+Though, to be compatible with the IDnow system, your transaction number may contain only the
+following characters: <code>a-zA-Z0-9_-</code>
 
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get()
-```
+The transaction number is case insensitive.
 
-```shell
-curl "http://example.com/api/kittens"
-  -H "Authorization: meowmeowmeow"
-```
+Additionally, the IDnow system (internally) assigns each identification another ID which is called IdentID and also visible for the user. It takes the form of "ABC-DEFGH".
 
-```javascript
-const kittn = require('kittn');
+## Header
 
-let api = kittn.authorize('meowmeowmeow');
-let kittens = api.kittens.get();
-```
+<table>
+<thead>
+<th>Field</th>
+<th>Mandatory</th>
+<th>Content</th>
+<th>Description</th>
+</thead>
+<tbody>
+<tr>
+<td>X-API-KEY</td>
+<td>Yes</td>
+<td>Your API Key</td>
+<td>Causes a 401 unauthorized error if not provided.</td>
+</tr>
+<tr>
+<td>Content-Type</td>
+<td>Yes</td>
+<td>application/json</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 
-> The above command returns JSON structured like this:
+## Pre-defining Values for Questions
+
+> To pre-define the answers, set an array with the questions key and the desired value:
 
 ```json
-[
-  {
-    "id": 1,
-    "name": "Fluffums",
-    "breed": "calico",
-    "fluffiness": 6,
-    "cuteness": 7
-  },
-  {
-    "id": 2,
-    "name": "Max",
-    "breed": "unknown",
-    "fluffiness": 5,
-    "cuteness": 10
+{
+  "questions": {
+    "question_key_str": {
+      "value": "value"
+    },
+    "question_key_int": {
+      "value": 1
+    },
+    "question_key_date": {
+      "value": "1975-12-20"
+    }
   }
-]
-```
-
-This endpoint retrieves all kittens.
-
-### HTTP Request
-
-`GET http://example.com/api/kittens`
-
-### Query Parameters
-
-Parameter | Default | Description
---------- | ------- | -----------
-include_cats | false | If set to true, the result will also include cats.
-available | true | If set to false, the result will include kittens that have already been adopted.
-
-<aside class="success">
-Remember — a happy kitten is an authenticated kitten!
-</aside>
-
-## Get a Specific Kitten
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```python
-import kittn
-
-api = kittn.authorize('meowmeowmeow')
-api.kittens.get(2)
-```
-
-```shell
-curl "http://example.com/api/kittens/2"
-  -H "Authorization: meowmeowmeow"
-```
-
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.get(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "name": "Max",
-  "breed": "unknown",
-  "fluffiness": 5,
-  "cuteness": 10
 }
 ```
 
-This endpoint retrieves a specific kitten.
-
-<aside class="warning">Inside HTML code blocks like this one, you can't use Markdown, so use <code>&lt;code&gt;</code> blocks to denote code.</aside>
-
-### HTTP Request
-
-`GET http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
---------- | -----------
-ID | The ID of the kitten to retrieve
-
-## Delete a Specific Kitten
-
-```ruby
-require 'kittn'
-
-api = Kittn::APIClient.authorize!('meowmeowmeow')
-api.kittens.delete(2)
+``` javascript
+  alert('Hello World!')
 ```
 
-```python
-import kittn
+``` csharp
+  Console.WriteLine("Hello World!");
 
-api = kittn.authorize('meowmeowmeow')
-api.kittens.delete(2)
 ```
 
-```shell
-curl "http://example.com/api/kittens/2"
-  -X DELETE
-  -H "Authorization: meowmeowmeow"
-```
+IDnow supports asking additional questions during the identification process. The question is only
+shown to the identification agent. Questions can be in the form of radio buttons, dropdowns, input
+fields, date fields etc. Additionally, questions can be configured to be read-only or only be shown
+depending on the selection from other questions our depending on values from the identification itself
+(like country of the user for example).
 
-```javascript
-const kittn = require('kittn');
-
-let api = kittn.authorize('meowmeowmeow');
-let max = api.kittens.delete(2);
-```
-
-> The above command returns JSON structured like this:
-
-```json
-{
-  "id": 2,
-  "deleted" : ":("
-}
-```
-
-This endpoint deletes a specific kitten.
-
-### HTTP Request
-
-`DELETE http://example.com/kittens/<ID>`
-
-### URL Parameters
-
-Parameter | Description
---------- | -----------
-ID | The ID of the kitten to delete
-
+Using this REST API, values for questions can be pre-defined for the agent. The agent will see the
+selected answer and will be able to modify it (unless read-only is enabled).
